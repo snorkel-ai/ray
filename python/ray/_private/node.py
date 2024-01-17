@@ -103,6 +103,26 @@ class Node:
             ray_params.external_addresses = external_redis
             ray_params.num_redis_shards = len(external_redis) - 1
 
+        # Try to get node IP address with the parameters.
+        if ray_params.node_ip_address:
+            node_ip_address = ray_params.node_ip_address
+        elif ray_params.redis_address:
+            node_ip_address = ray.util.get_node_ip_address(ray_params.redis_address)
+        else:
+            node_ip_address = ray.util.get_node_ip_address()
+        self._node_ip_address = node_ip_address
+
+        if ray_params.raylet_ip_address:
+            raylet_ip_address = ray_params.raylet_ip_address
+        else:
+            raylet_ip_address = node_ip_address
+
+        if raylet_ip_address != node_ip_address and (not connect_only or head):
+            raise ValueError(
+                "The raylet IP address should only be different than the node "
+                "IP address when connecting to an existing raylet; i.e., when "
+                "head=False and connect_only=True."
+            )
         if (
             ray_params._system_config
             and len(ray_params._system_config) > 0
@@ -111,6 +131,8 @@ class Node:
             raise ValueError(
                 "System config parameters can only be set on the head node."
             )
+
+        self._raylet_ip_address = raylet_ip_address
 
         ray_params.update_if_absent(
             include_log_monitor=True,
@@ -159,21 +181,18 @@ class Node:
             self._init_gcs_client()
 
         # Register the temp dir.
-        self._session_name = ray_params.session_name
-        if self._session_name is None:
-            if head:
-                # We expect this the first time we initialize a cluster, but not during
-                # subsequent restarts of the head node.
-                maybe_key = self.check_persisted_session_name()
-                if maybe_key is None:
-                    # date including microsecond
-                    date_str = datetime.datetime.today().strftime(
-                        "%Y-%m-%d_%H-%M-%S_%f"
-                    )
-                    self._session_name = f"session_{date_str}_{os.getpid()}"
-                else:
-                    self._session_name = ray._private.utils.decode(maybe_key)
+        if head:
+            # We expect this the first time we initialize a cluster, but not during
+            # subsequent restarts of the head node.
+            maybe_key = self.check_persisted_session_name()
+            if maybe_key is None:
+                # date including microsecond
+                date_str = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S_%f")
+                self._session_name = f"session_{date_str}_{os.getpid()}"
             else:
+                self._session_name = ray._private.utils.decode(maybe_key)
+        else:
+            if ray_params.session_name is None:
                 assert not self._default_worker
                 session_name = ray._private.utils.internal_kv_get_with_retry(
                     self.get_gcs_client(),
@@ -182,6 +201,9 @@ class Node:
                     num_retries=ray_constants.NUM_REDIS_GET_RETRIES,
                 )
                 self._session_name = ray._private.utils.decode(session_name)
+            else:
+                # worker mode
+                self._session_name = ray_params.session_name
 
         # Initialize webui url
         if head:
@@ -195,38 +217,7 @@ class Node:
                     f"{ray_params.dashboard_host}:{ray_params.dashboard_port}"
                 )
 
-        # It creates a session_dir.
         self._init_temp()
-
-        node_ip_address = ray_params.node_ip_address
-        if node_ip_address is None:
-            if connect_only:
-                node_ip_address = self._wait_and_get_for_node_address()
-            else:
-                node_ip_address = ray.util.get_node_ip_address()
-
-        assert node_ip_address is not None
-        ray_params.update_if_absent(
-            node_ip_address=node_ip_address, raylet_ip_address=node_ip_address
-        )
-        self._node_ip_address = node_ip_address
-        if not connect_only:
-            ray._private.services.write_node_ip_address(
-                self.get_session_dir_path(), node_ip_address
-            )
-
-        if ray_params.raylet_ip_address:
-            raylet_ip_address = ray_params.raylet_ip_address
-        else:
-            raylet_ip_address = node_ip_address
-
-        if raylet_ip_address != node_ip_address and (not connect_only or head):
-            raise ValueError(
-                "The raylet IP address should only be different than the node "
-                "IP address when connecting to an existing raylet; i.e., when "
-                "head=False and connect_only=True."
-            )
-        self._raylet_ip_address = raylet_ip_address
 
         # Validate and initialize the persistent storage API.
         if head:
@@ -984,43 +975,6 @@ class Node:
                     json.dump(ports_by_node, f)
 
         return port
-
-    def _wait_and_get_for_node_address(self, timeout_s: int = 60) -> str:
-        """Wait until the RAY_NODE_IP_FILENAME file is avialable.
-
-        RAY_NODE_IP_FILENAME is created when a ray instance is started.
-
-        Args:
-            timeout_s: If the ip address is not found within this
-                timeout, it will raise ValueError.
-        Returns:
-            The node_ip_address of the current session if it finds it
-            within timeout_s.
-        """
-        for i in range(timeout_s):
-            node_ip_address = ray._private.services.get_cached_node_ip_address(
-                self.get_session_dir_path()
-            )
-
-            if node_ip_address is not None:
-                return node_ip_address
-
-            time.sleep(1)
-            if i % 10 == 0:
-                logger.info(
-                    f"Can't find a `{ray_constants.RAY_NODE_IP_FILENAME}` "
-                    f"file from {self.get_session_dir_path()}. "
-                    "Have you started Ray instsance using "
-                    "`ray start` or `ray.init`?"
-                )
-
-        raise ValueError(
-            f"Can't find a `{ray_constants.RAY_NODE_IP_FILENAME}` "
-            f"file from {self.get_session_dir_path()}. "
-            f"for {timeout_s} seconds. "
-            "A ray instance hasn't started. "
-            "Did you do `ray start` or `ray.init` on this host?"
-        )
 
     def start_reaper_process(self):
         """
