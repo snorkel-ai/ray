@@ -76,7 +76,6 @@ redis = container(
 head_node_vol = volume()
 worker_node_vol = volume()
 head_node_container_name = "gcs" + str(int(time.time()))
-
 head_node = container(
     image="ray_ci:v1",
     name=head_node_container_name,
