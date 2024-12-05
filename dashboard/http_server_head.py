@@ -48,7 +48,7 @@ def setup_static_dir():
         )
 
     static_dir = os.path.join(build_dir, "static")
-    routes.static("/static", static_dir)
+    routes.static("/static", static_dir, follow_symlinks=True)
     return build_dir
 
 
