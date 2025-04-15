@@ -9,7 +9,7 @@ from typing import Optional
 import ray
 
 import dask
-from dask.core import istask, ishashable, _execute_task
+from dask.core import istask, ishashable
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
