@@ -10,6 +10,7 @@ import ray
 
 import dask
 from dask.core import istask, ishashable
+from dask._task_spec import Task, Alias, TaskRef
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
@@ -361,7 +362,16 @@ def _rayify_task(
                 if alternate_return is not None:
                     return alternate_return
 
-        func, args = task[0], task[1:]
+        if isinstance(task, Alias):
+            target = task.target
+            if isinstance(target, TaskRef):
+                breakpoint()
+                func = task.key
+                args = deps[task.target.key]
+        elif isinstance(task, Task):
+            func, args = task.func, task.args
+        else:
+            breakpoint()
         if func is multiple_return_get:
             return _execute_task(task, deps)
         # If the function's arguments contain nested object references, we must
@@ -471,6 +481,7 @@ def dask_task_wrapper(func, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         pre_states = [
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
+    # breakpoint()
     repacked_args, repacked_deps = repack(args)
     # Recursively execute Dask-inlined tasks.
     actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]

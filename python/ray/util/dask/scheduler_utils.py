@@ -51,6 +51,7 @@ def start_state_from_dask(dsk, cache=None, sortkey=None):
      'waiting': {'w': {'z'}},
      'waiting_data': {'x': {'z'}, 'y': {'w'}, 'z': {'w'}}}
     """
+    # breakpoint()
     if sortkey is None:
         sortkey = order(dsk).get
     if cache is None:
