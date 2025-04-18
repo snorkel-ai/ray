@@ -362,7 +362,7 @@ def _rayify_task(
                 if alternate_return is not None:
                     return alternate_return
 
-        breakpoint()
+        # breakpoint()
         func, args = task.func, task.args
         # If the function's arguments contain nested object references, we must
         # unpack said object references into a flat set of arguments so that
