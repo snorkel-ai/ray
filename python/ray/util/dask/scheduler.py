@@ -9,7 +9,6 @@ from typing import Optional
 import ray
 
 import dask
-from dask._task_spec import convert_legacy_graph, execute_graph, convert_legacy_task
 from dask.core import istask, ishashable
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
@@ -474,17 +473,7 @@ def dask_task_wrapper(func, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         ]
     repacked_args, repacked_deps = repack(args)
     # Recursively execute Dask-inlined tasks.
-    breakpoint()
-    actual_args = []
-    for a in repacked_args:
-        # a2 = convert_legacy_graph(a, all_keys=set(a) | set(repacked_deps))
-        # result = execute_graph(a2, repacked_deps, keys=set(flatten([out])))
-        # res = _execute_task(a, repacked_deps)
-        task = convert_legacy_task(None, a, repacked_deps, only_refs=True)
-        func, args, kwargs = task.func, task.args, task.kwargs
-        res = func(**kwargs)
-        actual_args.append(res)
-    # actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
+    actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
     # Execute the actual underlying Dask task.
     result = func(*actual_args)
 
