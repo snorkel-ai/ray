@@ -51,7 +51,6 @@ def start_state_from_dask(dsk, cache=None, sortkey=None):
      'waiting': {'w': {'z'}},
      'waiting_data': {'x': {'z'}, 'y': {'w'}, 'z': {'w'}}}
     """
-    # breakpoint()
     if sortkey is None:
         sortkey = order(dsk).get
     if cache is None:
@@ -59,7 +58,6 @@ def start_state_from_dask(dsk, cache=None, sortkey=None):
     if cache is None:
         cache = dict()
 
-    dsk = convert_legacy_graph(dsk, all_keys=set(dsk) | set(cache))
     data_keys = set()
     for k, v in dsk.items():
         if isinstance(v, DataNode):
