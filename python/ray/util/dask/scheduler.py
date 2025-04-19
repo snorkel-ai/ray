@@ -365,9 +365,9 @@ def _rayify_task(
         if isinstance(task, Alias):
             target = task.target
             if isinstance(target, TaskRef):
+                return deps[task.target.key]
+            else:
                 breakpoint()
-                func = task.key
-                args = deps[task.target.key]
         elif isinstance(task, Task):
             func, args = task.func, task.args
         else:
