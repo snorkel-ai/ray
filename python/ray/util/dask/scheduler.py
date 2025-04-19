@@ -349,7 +349,7 @@ def _rayify_task(
             )
             for t in task
         ]
-    elif isinstance(task, Task):
+    elif istask(task):
         # Unpacks and repacks Ray object references and submits the task to the
         # Ray cluster for execution.
         if ray_presubmit_cbs is not None:
@@ -362,8 +362,18 @@ def _rayify_task(
                 if alternate_return is not None:
                     return alternate_return
 
-        # breakpoint()
-        func, args = task.func, task.args
+        if isinstance(task, Alias):
+            target = task.target
+            if isinstance(target, TaskRef):
+                breakpoint()
+                func = task.key
+                args = deps[task.target.key]
+        elif isinstance(task, Task):
+            func, args = task.func, task.args
+        else:
+            breakpoint()
+        if func is multiple_return_get:
+            return _execute_task(task, deps)
         # If the function's arguments contain nested object references, we must
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
