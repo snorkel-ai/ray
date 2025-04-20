@@ -371,7 +371,8 @@ def _rayify_task(
         elif isinstance(task, Task):
             func, args = task.func, task.args
         else:
-            breakpoint()
+            # For a legacy task
+            func, args = task[0], task[1:]
         if func is multiple_return_get:
             return _execute_task(task, deps)
         # If the function's arguments contain nested object references, we must
@@ -402,6 +403,7 @@ def _rayify_task(
     elif not ishashable(task):
         return task
     elif task in deps:
+        print("task in deps", task)
         return deps[task]
     else:
         return task
