@@ -5,6 +5,7 @@ import uuid
 
 import ray
 
+from dask._task_spec import GraphNode, Alias, DataNode, Task
 from dask.base import quote
 from dask.core import get as get_sync
 from dask.utils import apply
@@ -46,6 +47,17 @@ def unpack_object_refs(*args):
     object_refs_token = uuid.uuid4().hex
 
     def _unpack(expr):
+        if isinstance(expr, GraphNode):
+            if isinstance(expr, Alias):
+                return expr.key
+            elif isinstance(expr, DataNode):
+                return expr()
+            elif isinstance(expr, Task):
+                # breakpoint()
+                # repack_task = (tuple, [_unpack(i) for i in expr.args])
+                repack_task = (tuple, [expr.func] + [_unpack(i) for i in expr.args])
+            else:
+                breakpoint()
         if isinstance(expr, ray.ObjectRef):
             token = expr.hex()
             repack_dsk[token] = (getitem, object_refs_token, len(object_refs))
