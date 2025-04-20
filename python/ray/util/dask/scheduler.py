@@ -9,7 +9,6 @@ from typing import Optional
 import ray
 
 import dask
-from dask.base import dont_optimize
 from dask.core import istask, ishashable
 from dask._task_spec import Task, Alias, TaskRef
 from dask.system import CPU_COUNT
@@ -71,7 +70,7 @@ def enable_dask_on_ray(
     # shuffle doesn't work for a multi-node Ray cluster that doesn't share
     # the filesystem.
     return dask.config.set(
-        scheduler=ray_dask_get, shuffle=shuffle, dataframe_optimize=dataframe_optimize, array_optimize=dont_optimize
+        scheduler=ray_dask_get, shuffle=shuffle, dataframe_optimize=dataframe_optimize
     )
 
 
