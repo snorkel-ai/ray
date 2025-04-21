@@ -484,18 +484,7 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         pre_states = [
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
-    # breakpoint()
-    # repacked_args, repacked_deps = repack(args)
-    # # Recursively execute Dask-inlined tasks.
-    # actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
-    # inkeys = actual_args[0][0]
-    # out_key = actual_args[1]
-    # inner_dsk = {}
-    # external_deps = repacked_deps
-    # # inkeys = {a for a in actual_args if isinstance(a, tuple)}
-    # actual_args = [inner_dsk, out_key, inkeys, external_deps]
-    # # Execute the actual underlying Dask task.
-    # result = func(*actual_args)
+
     result = task()
 
     if ray_posttask_cbs is not None:

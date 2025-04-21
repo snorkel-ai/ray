@@ -19,8 +19,9 @@ ray.init(runtime_env={
 d_arr = da.from_array(np.random.randint(0, 1000, size=(3, 3)))
 
 # The Dask scheduler submits the underlying task graph to Ray.
-res = (d_arr + d_arr).compute(scheduler=ray_dask_get)
+# res = (d_arr + d_arr).compute(scheduler=ray_dask_get)
 # res = d_arr.compute(scheduler=ray_dask_get)
+res = d_arr.mean().compute(scheduler=ray_dask_get)
 print(res)
 
 ray.shutdown()
