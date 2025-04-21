@@ -362,7 +362,13 @@ def _rayify_task(
                 if alternate_return is not None:
                     return alternate_return
 
-        func = task.func
+        if isinstance(task, Alias):
+            target = task.target
+            return deps[task.target.key]
+        elif isinstance(task, Task):
+            func = task.func
+        else:
+            raise ValueError("Invalid task type: %s" % type(task))
 
         if func is multiple_return_get:
             return _execute_task(task, deps)
