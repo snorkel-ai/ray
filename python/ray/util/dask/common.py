@@ -48,7 +48,6 @@ def unpack_object_refs(*args):
 
     def _unpack(expr):
         if isinstance(expr, ray.ObjectRef):
-            # breakpoint()
             token = expr.hex()
             repack_dsk[token] = (getitem, object_refs_token, len(object_refs))
             object_refs.append(expr)
@@ -88,11 +87,8 @@ def unpack_object_refs(*args):
 
     out = uuid.uuid4().hex
     repack_dsk[out] = (tuple, [_unpack(i) for i in args])
-    print("repack_dsk", repack_dsk)
-    print("object_refs", object_refs)
 
     def repack(results):
-        # breakpoint()
         dsk = repack_dsk.copy()
         dsk[object_refs_token] = quote(results)
         return get_sync(dsk, out)
