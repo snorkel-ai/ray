@@ -201,7 +201,6 @@ def ray_dask_get(dsk, keys, **kwargs):
             pb_actor = None
             if enable_progress_bar:
                 pb_actor = ray.get_actor("_dask_on_ray_pb")
-            # breakpoint()
             result = ray_get_unpack(object_refs, progress_bar_actor=pb_actor)
         if ray_finish_cbs is not None:
             for cb in ray_finish_cbs:
@@ -376,12 +375,7 @@ def _rayify_task(
             func, args = task[0], task[1:]
         if func is multiple_return_get:
             return _execute_task(task, deps)
-        # If the dependencies include things like ('array-f25ec265d554e82b6ebb339baae70218', 0, 0): np.ndarray,
-        # we need to convert them to DataNode objects, then substitute the corrensponding key in the task's dependencies with the value.
-        from dask._task_spec import DataNode
-        deps2 = {k: DataNode(k, v) for k, v in deps.items()}
-        task = task.substitute(deps2)
-        # Submit the task using a wrapper function.
+
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
             num_returns=(
@@ -391,6 +385,7 @@ def _rayify_task(
         ).remote(
             task,
             key,
+            deps,
             ray_pretask_cbs,
             ray_posttask_cbs,
         )
@@ -409,7 +404,7 @@ def _rayify_task(
 
 
 @ray.remote
-def dask_task_wrapper(task, key, ray_pretask_cbs, ray_posttask_cbs):
+def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
@@ -437,7 +432,7 @@ def dask_task_wrapper(task, key, ray_pretask_cbs, ray_posttask_cbs):
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
 
-    result = task()
+    result = task(deps)
 
     if ray_posttask_cbs is not None:
         for cb, pre_state in zip(ray_posttask_cbs, pre_states):
