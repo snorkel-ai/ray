@@ -379,9 +379,6 @@ def _rayify_task(
         # If the function's arguments contain nested object references, we must
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
-        # arg_object_refs, repack = unpack_object_refs(task, deps)
-        # arg_object_refs = list(deps.keys())
-        breakpoint()
         from dask._task_spec import DataNode
         deps2 = {k: DataNode(k, v) for k, v in deps.items()}
         task = task.substitute(deps2)
