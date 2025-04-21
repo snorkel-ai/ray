@@ -362,17 +362,8 @@ def _rayify_task(
                 if alternate_return is not None:
                     return alternate_return
 
-        if isinstance(task, Alias):
-            target = task.target
-            if isinstance(target, TaskRef):
-                return deps[task.target.key]
-            else:
-                breakpoint()
-        elif isinstance(task, Task):
-            func, args = task.func, task.args
-        else:
-            # For a legacy task
-            func, args = task[0], task[1:]
+        func = task.func
+
         if func is multiple_return_get:
             return _execute_task(task, deps)
 
