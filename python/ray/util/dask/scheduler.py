@@ -363,8 +363,7 @@ def _rayify_task(
                     return alternate_return
 
         if isinstance(task, Alias):
-            target = task.target
-            return deps[task.target.key]
+            return deps[task.target]
         elif isinstance(task, Task):
             func = task.func
         else:
