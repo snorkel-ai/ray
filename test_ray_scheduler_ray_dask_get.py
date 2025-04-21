@@ -16,8 +16,8 @@ ray.init(runtime_env={
     "env_vars": {"RAY_DEBUG": "1"}, 
 })
 
-d_arr = da.from_array(np.random.randint(0, 1000, size=(3, 3)))
-d_arr2 = da.from_array(np.random.randint(0, 1000, size=(3, 3)))
+d_arr = da.from_array(np.random.randint(0, 1000, size=(1024, 1024)))
+d_arr2 = da.from_array(np.random.randint(0, 1000, size=(1024, 1024)))
 
 #
 #print("2*d_arr:", (2 * d_arr).compute(scheduler=ray_dask_get))
@@ -34,14 +34,14 @@ print("mean: ", res)
 
 npartitions = 2
 df = dd.from_pandas(
-    pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
+    pd.DataFrame(np.random.randint(0, 100, size=(1024, 2)), columns=["age", "grade"]),
     npartitions=npartitions
 )
 # df.visualize doesn't work with dask-expr
 #df.visualize(filename="df.png", optimize_graph=False)
 
 df2 = dd.from_pandas(
-    pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
+    pd.DataFrame(np.random.randint(0, 100, size=(1024, 2)), columns=["age", "grade"]),
     npartitions=npartitions
 )
 # We set max_branch=npartitions in order to ensure that the task-based
