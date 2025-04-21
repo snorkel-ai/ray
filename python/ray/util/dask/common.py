@@ -5,7 +5,7 @@ import uuid
 
 import ray
 
-from dask._task_spec import GraphNode, Alias, DataNode, Task
+from dask._task_spec import GraphNode, Alias, DataNode, Task, TaskRef, _identity_cast
 from dask.base import quote
 from dask.core import get as get_sync
 from dask.utils import apply
@@ -47,18 +47,8 @@ def unpack_object_refs(*args):
     object_refs_token = uuid.uuid4().hex
 
     def _unpack(expr):
-        if isinstance(expr, GraphNode):
-            if isinstance(expr, Alias):
-                return expr.key
-            elif isinstance(expr, DataNode):
-                return expr()
-            elif isinstance(expr, Task):
-                # breakpoint()
-                # repack_task = (tuple, [_unpack(i) for i in expr.args])
-                repack_task = (tuple, [expr.func] + [_unpack(i) for i in expr.args])
-            else:
-                breakpoint()
         if isinstance(expr, ray.ObjectRef):
+            # breakpoint()
             token = expr.hex()
             repack_dsk[token] = (getitem, object_refs_token, len(object_refs))
             object_refs.append(expr)
@@ -70,8 +60,10 @@ def unpack_object_refs(*args):
         if typ in (list, tuple, set):
             repack_task = (typ, [_unpack(i) for i in expr])
         elif typ in (dict, OrderedDict):
+            # breakpoint()
             repack_task = (typ, [[_unpack(k), _unpack(v)] for k, v in expr.items()])
         elif is_dataclass(expr):
+            breakpoint(0)
             repack_task = (
                 apply,
                 typ,
@@ -84,6 +76,22 @@ def unpack_object_refs(*args):
                     ],
                 ),
             )
+        elif isinstance(expr, GraphNode):
+            if isinstance(expr, Alias):
+                # breakpoint()
+                if isinstance(expr.key, str) and expr.key.startswith("__dask_blockwise__"):
+                    # return TaskRef(expr.key)
+                    return []
+                return expr.key
+            elif isinstance(expr, DataNode):
+                return expr()
+            elif isinstance(expr, Task):
+                if expr.func == _identity_cast:
+                    return _identity_cast(*expr.args, **expr.kwargs)
+                # repack_task = (tuple, [_unpack(i) for i in expr.args])
+                repack_task = (tuple, [expr.func] + [_unpack(i) for i in expr.args])
+            else:
+                breakpoint()
         else:
             return expr
         repack_dsk[token] = repack_task
@@ -91,6 +99,7 @@ def unpack_object_refs(*args):
 
     out = uuid.uuid4().hex
     repack_dsk[out] = (tuple, [_unpack(i) for i in args])
+    print("repack_dsk", repack_dsk)
 
     def repack(results):
         dsk = repack_dsk.copy()

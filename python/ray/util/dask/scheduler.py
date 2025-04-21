@@ -10,7 +10,7 @@ import ray
 
 import dask
 from dask.core import istask, ishashable
-from dask._task_spec import Task, Alias, TaskRef
+from dask._task_spec import Task, Alias, TaskRef, DataNode, convert_legacy_graph
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
@@ -365,6 +365,8 @@ def _rayify_task(
         if isinstance(task, Alias):
             target = task.target
             if isinstance(target, TaskRef):
+                print("task as Alias", task)
+                print("returning", task.target.key)
                 return deps[task.target.key]
             else:
                 breakpoint()
@@ -379,6 +381,7 @@ def _rayify_task(
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
         arg_object_refs, repack = unpack_object_refs(args, deps)
+        # breakpoint()
         # Submit the task using a wrapper function.
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
@@ -387,7 +390,7 @@ def _rayify_task(
             ),
             **ray_remote_args,
         ).remote(
-            func,
+            task,
             repack,
             key,
             ray_pretask_cbs,
@@ -400,6 +403,8 @@ def _rayify_task(
                 cb(task, key, deps, object_refs)
 
         return object_refs
+    elif isinstance(task, DataNode):
+        breakpoint()
     elif not ishashable(task):
         return task
     elif task in deps:
@@ -439,6 +444,7 @@ def _execute_task(arg, cache, dsk=None):
     >>> _execute_task('foo', cache)  # Passes through on non-keys
     'foo'
     """
+    breakpoint()
     if isinstance(arg, list):
         return [_execute_task(a, cache) for a in arg]
     elif istask(arg):
@@ -456,7 +462,7 @@ def _execute_task(arg, cache, dsk=None):
 
 
 @ray.remote
-def dask_task_wrapper(func, repack, key, ray_pretask_cbs, ray_posttask_cbs, *args):
+def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *args):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
@@ -484,11 +490,18 @@ def dask_task_wrapper(func, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
     # breakpoint()
-    repacked_args, repacked_deps = repack(args)
-    # Recursively execute Dask-inlined tasks.
-    actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
-    # Execute the actual underlying Dask task.
-    result = func(*actual_args)
+    # repacked_args, repacked_deps = repack(args)
+    # # Recursively execute Dask-inlined tasks.
+    # actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
+    # inkeys = actual_args[0][0]
+    # out_key = actual_args[1]
+    # inner_dsk = {}
+    # external_deps = repacked_deps
+    # # inkeys = {a for a in actual_args if isinstance(a, tuple)}
+    # actual_args = [inner_dsk, out_key, inkeys, external_deps]
+    # # Execute the actual underlying Dask task.
+    # result = func(*actual_args)
+    result = task()
 
     if ray_posttask_cbs is not None:
         for cb, pre_state in zip(ray_posttask_cbs, pre_states):
