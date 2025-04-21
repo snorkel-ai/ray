@@ -87,11 +87,6 @@ def unpack_object_refs(*args):
         return token
 
     out = uuid.uuid4().hex
-    # breakpoint()
-    # if isinstance(args[0], Task):
-    #     repack_dsk[out] = args[0]
-    # else: 
-    #     repack_dsk[out] = (tuple, [_unpack(i) for i in args])
     repack_dsk[out] = (tuple, [_unpack(i) for i in args])
     print("repack_dsk", repack_dsk)
     print("object_refs", object_refs)

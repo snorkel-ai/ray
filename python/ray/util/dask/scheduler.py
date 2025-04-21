@@ -376,9 +376,8 @@ def _rayify_task(
             func, args = task[0], task[1:]
         if func is multiple_return_get:
             return _execute_task(task, deps)
-        # If the function's arguments contain nested object references, we must
-        # unpack said object references into a flat set of arguments so that
-        # Ray properly tracks the object dependencies between Ray tasks.
+        # If the dependencies include things like ('array-f25ec265d554e82b6ebb339baae70218', 0, 0): np.ndarray,
+        # we need to convert them to DataNode objects, then substitute the corrensponding key in the task's dependencies with the value.
         from dask._task_spec import DataNode
         deps2 = {k: DataNode(k, v) for k, v in deps.items()}
         task = task.substitute(deps2)
@@ -391,7 +390,6 @@ def _rayify_task(
             **ray_remote_args,
         ).remote(
             task,
-            # repack,
             key,
             ray_pretask_cbs,
             ray_posttask_cbs,
