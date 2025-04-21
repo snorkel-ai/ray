@@ -10,7 +10,7 @@ import ray
 
 import dask
 from dask.core import istask, ishashable
-from dask._task_spec import Task, Alias, TaskRef, DataNode, convert_legacy_graph
+from dask._task_spec import Task, Alias, TaskRef
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
@@ -365,8 +365,6 @@ def _rayify_task(
         if isinstance(task, Alias):
             target = task.target
             if isinstance(target, TaskRef):
-                print("task as Alias", task)
-                print("returning", task.target.key)
                 return deps[task.target.key]
             else:
                 breakpoint()
@@ -403,8 +401,6 @@ def _rayify_task(
                 cb(task, key, deps, object_refs)
 
         return object_refs
-    elif isinstance(task, DataNode):
-        breakpoint()
     elif not ishashable(task):
         return task
     elif task in deps:
@@ -444,7 +440,6 @@ def _execute_task(arg, cache, dsk=None):
     >>> _execute_task('foo', cache)  # Passes through on non-keys
     'foo'
     """
-    breakpoint()
     if isinstance(arg, list):
         return [_execute_task(a, cache) for a in arg]
     elif istask(arg):
