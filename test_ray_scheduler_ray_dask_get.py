@@ -32,4 +32,25 @@ print("array + array2: ", res)
 res = d_arr.mean().compute(scheduler=ray_dask_get)
 print("mean: ", res)
 
+npartitions = 2
+df = dd.from_pandas(
+    pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
+    npartitions=npartitions
+)
+df.visualize(filename="df.png", optimize_graph=False)
+
+df2 = dd.from_pandas(
+    pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
+    npartitions=npartitions
+)
+# We set max_branch=npartitions in order to ensure that the task-based
+# shuffle happens in a single stage, which is required in order for our
+# optimization to work.
+a = df.set_index(["age"], shuffle="tasks", max_branch=npartitions)
+b = df2.set_index(["age"], shuffle="tasks", max_branch=npartitions)
+a.visualize(filename="a.png", optimize_graph=False)
+(dd.concat([a, b])).visualize(filename="a_plus_b.png", optimize_graph=False)
+print("a: ", a.compute())
+print("a + b: ", dd.concat([a, b]).compute())
+
 ray.shutdown()
