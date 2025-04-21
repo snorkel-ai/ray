@@ -379,9 +379,12 @@ def _rayify_task(
         # If the function's arguments contain nested object references, we must
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
-        arg_object_refs, repack = unpack_object_refs(task, deps)
-        arg_object_refs = list(deps.keys())
+        # arg_object_refs, repack = unpack_object_refs(task, deps)
+        # arg_object_refs = list(deps.keys())
         breakpoint()
+        from dask._task_spec import DataNode
+        deps2 = {k: DataNode(k, v) for k, v in deps.items()}
+        task = task.substitute(deps2)
         # Submit the task using a wrapper function.
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
@@ -391,11 +394,10 @@ def _rayify_task(
             **ray_remote_args,
         ).remote(
             task,
-            repack,
+            # repack,
             key,
             ray_pretask_cbs,
             ray_posttask_cbs,
-            *arg_object_refs,
         )
 
         if ray_postsubmit_cbs is not None:
@@ -459,7 +461,7 @@ def _execute_task(arg, cache, dsk=None):
 
 
 @ray.remote
-def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *args):
+def dask_task_wrapper(task, key, ray_pretask_cbs, ray_posttask_cbs):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
@@ -486,9 +488,9 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         pre_states = [
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
-    breakpoint()
-    repacked = repack(args)
-    breakpoint()
+    # breakpoint()
+    # repacked = repack(args)
+    # breakpoint()
     # # Recursively execute Dask-inlined tasks.
     # actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
     # inkeys = actual_args[0][0]

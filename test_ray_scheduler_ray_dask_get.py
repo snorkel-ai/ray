@@ -20,13 +20,13 @@ d_arr = da.from_array(np.random.randint(0, 1000, size=(3, 3)))
 d_arr2 = da.from_array(np.random.randint(0, 1000, size=(3, 3)))
 
 #
-print((2 * d_arr).compute(scheduler=ray_dask_get))
+#print("2*d_arr:", (2 * d_arr).compute(scheduler=ray_dask_get))
 
 # The Dask scheduler submits the underlying task graph to Ray.
 #res = d_arr.compute(scheduler=ray_dask_get_sync)
 #print("array: ", res)
-#res = (d_arr + d_arr2).compute(scheduler=ray_dask_get)
-#print("array + array2: ", res)
+res = (d_arr + d_arr2).compute(scheduler=ray_dask_get)
+print("array + array2: ", res)
 #res = d_arr.mean().compute(scheduler=ray_dask_get)
 #print("mean: ", res)
 
