@@ -201,6 +201,7 @@ def ray_dask_get(dsk, keys, **kwargs):
             pb_actor = None
             if enable_progress_bar:
                 pb_actor = ray.get_actor("_dask_on_ray_pb")
+            # breakpoint()
             result = ray_get_unpack(object_refs, progress_bar_actor=pb_actor)
         if ray_finish_cbs is not None:
             for cb in ray_finish_cbs:
@@ -378,8 +379,9 @@ def _rayify_task(
         # If the function's arguments contain nested object references, we must
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
-        arg_object_refs, repack = unpack_object_refs(args, deps)
-        # breakpoint()
+        arg_object_refs, repack = unpack_object_refs(task, deps)
+        arg_object_refs = list(deps.keys())
+        breakpoint()
         # Submit the task using a wrapper function.
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
@@ -484,7 +486,19 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         pre_states = [
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
-
+    breakpoint()
+    repacked = repack(args)
+    breakpoint()
+    # # Recursively execute Dask-inlined tasks.
+    # actual_args = [_execute_task(a, repacked_deps) for a in repacked_args]
+    # inkeys = actual_args[0][0]
+    # out_key = actual_args[1]
+    # inner_dsk = {}
+    # external_deps = repacked_deps
+    # # inkeys = {a for a in actual_args if isinstance(a, tuple)}
+    # actual_args = [inner_dsk, out_key, inkeys, external_deps]
+    # # Execute the actual underlying Dask task.
+    # result = func(*actual_args)
     result = task()
 
     if ray_posttask_cbs is not None:
@@ -556,6 +570,7 @@ def ray_get_unpack(object_refs, progress_bar_actor=None):
         # loves to nest collections in nested tuples and Ray expects a flat
         # list of object references. We repack the results after ray.get()
         # completes.
+        # breakpoint()
         object_refs, repack = unpack_object_refs(*object_refs)
         computed_result = get_result(object_refs)
         return repack(computed_result)

@@ -73,17 +73,31 @@ def unpack_object_refs(*args):
                     ],
                 ),
             )
+        elif isinstance(expr, GraphNode):
+            if isinstance(expr, Alias):
+                return expr.key
+                # return expr
+            else:
+                breakpoint()
+                return expr
         else:
             return expr
         repack_dsk[token] = repack_task
         return token
 
     out = uuid.uuid4().hex
-    repack_dsk[out] = (tuple, [_unpack(i) for i in args])
+    # breakpoint()
+    if isinstance(args[0], Task):
+        repack_dsk[out] = args[0]
+    else: 
+        repack_dsk[out] = (tuple, [_unpack(i) for i in args])
 
     def repack(results):
+        # breakpoint()
         dsk = repack_dsk.copy()
         dsk[object_refs_token] = quote(results)
+        for r in results:
+            dsk[r] = ()
         return get_sync(dsk, out)
 
     return object_refs, repack
