@@ -400,7 +400,7 @@ def _rayify_task(
 
 
 @ray.remote
-def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs):
+def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
