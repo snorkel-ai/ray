@@ -371,18 +371,12 @@ def _rayify_task(
                 # for 2024.12.1+
                 return deps[target]
         elif isinstance(task, Task):
-            func = task.func
+            pass
         else:
             raise ValueError("Invalid task type: %s" % type(task))
 
-        if func is multiple_return_get:
-            return _execute_task(task, deps)
-
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
-            num_returns=(
-                1 if not isinstance(func, MultipleReturnFunc) else func.num_returns
-            ),
             **ray_remote_args,
         ).remote(
             task,
@@ -588,22 +582,6 @@ def ray_dask_get_sync(dsk, keys, **kwargs):
                 cb(result)
 
         return result
-
-
-@dataclass
-class MultipleReturnFunc:
-    func: callable
-    num_returns: int
-
-    def __call__(self, *args, **kwargs):
-        returns = self.func(*args, **kwargs)
-        if isinstance(returns, dict) or isinstance(returns, OrderedDict):
-            returns = [returns[k] for k in range(len(returns))]
-        return returns
-
-
-def multiple_return_get(multiple_returns, idx):
-    return multiple_returns[idx]
 
 
 def _build_key_scoped_ray_remote_args(dsk, annotations, ray_remote_args):

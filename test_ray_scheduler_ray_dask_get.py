@@ -37,7 +37,8 @@ df = dd.from_pandas(
     pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
     npartitions=npartitions
 )
-df.visualize(filename="df.png", optimize_graph=False)
+# df.visualize doesn't work with dask-expr
+#df.visualize(filename="df.png", optimize_graph=False)
 
 df2 = dd.from_pandas(
     pd.DataFrame(np.random.randint(0, 100, size=(10, 2)), columns=["age", "grade"]),
@@ -48,8 +49,8 @@ df2 = dd.from_pandas(
 # optimization to work.
 a = df.set_index(["age"], shuffle="tasks", max_branch=npartitions)
 b = df2.set_index(["age"], shuffle="tasks", max_branch=npartitions)
-a.visualize(filename="a.png", optimize_graph=False)
-(dd.concat([a, b])).visualize(filename="a_plus_b.png", optimize_graph=False)
+#a.visualize(filename="a.png", optimize_graph=False)
+#(dd.concat([a, b])).visualize(filename="a_plus_b.png", optimize_graph=False)
 print("a: ", a.compute())
 print("a + b: ", dd.concat([a, b]).compute())
 
