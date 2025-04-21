@@ -363,7 +363,13 @@ def _rayify_task(
                     return alternate_return
 
         if isinstance(task, Alias):
-            return deps[task.target]
+            target = task.target
+            if isinstance(target, TaskRef):
+                # for 2024.12.0
+                return deps[target.key]
+            else:
+                # for 2024.12.1+
+                return deps[target]
         elif isinstance(task, Task):
             func = task.func
         else:
