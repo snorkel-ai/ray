@@ -10,7 +10,7 @@ import ray
 
 import dask
 from dask.core import istask, ishashable
-from dask._task_spec import Task, Alias, TaskRef
+from dask._task_spec import Task, Alias, TaskRef, convert_legacy_graph
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
@@ -168,6 +168,8 @@ def ray_dask_get(dsk, keys, **kwargs):
             ray_postsubmit_all_cbs,
             ray_finish_cbs,
         ) = unpack_ray_callbacks(ray_callbacks)
+        # Make sure the graph is in the new format
+        dsk = convert_legacy_graph(dsk)
         # NOTE: We hijack Dask's `get_async` function, injecting a different
         # task executor.
         object_refs = get_async(
@@ -549,6 +551,8 @@ def ray_dask_get_sync(dsk, keys, **kwargs):
             ray_postsubmit_all_cbs,
             ray_finish_cbs,
         ) = unpack_ray_callbacks(ray_callbacks)
+        # Make sure the graph is in the new format
+        dsk = convert_legacy_graph(dsk)
         # NOTE: We hijack Dask's `get_async` function, injecting a different
         # task executor.
         object_refs = get_async(
