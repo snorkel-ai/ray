@@ -588,6 +588,22 @@ def ray_dask_get_sync(dsk, keys, **kwargs):
         return result
 
 
+@dataclass
+class MultipleReturnFunc:
+    func: callable
+    num_returns: int
+
+    def __call__(self, *args, **kwargs):
+        returns = self.func(*args, **kwargs)
+        if isinstance(returns, dict) or isinstance(returns, OrderedDict):
+            returns = [returns[k] for k in range(len(returns))]
+        return returns
+
+
+def multiple_return_get(multiple_returns, idx):
+    return multiple_returns[idx]
+
+
 def _build_key_scoped_ray_remote_args(dsk, annotations, ray_remote_args):
     # Handle per-layer annotations.
     if not isinstance(dsk, dask.highlevelgraph.HighLevelGraph):
