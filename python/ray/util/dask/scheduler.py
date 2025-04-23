@@ -370,15 +370,22 @@ def _rayify_task(
         else:
             raise ValueError("Invalid task type: %s" % type(task))
 
+        # If the function's arguments contain nested object references, we must
+        # unpack said object references into a flat set of arguments so that
+        # Ray properly tracks the object dependencies between Ray tasks.
+        arg_object_refs, repack = unpack_object_refs(deps)
+
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
             **ray_remote_args,
         ).remote(
             task,
+            repack,
             key,
             deps,
             ray_pretask_cbs,
             ray_posttask_cbs,
+            *arg_object_refs,
         )
 
         if ray_postsubmit_cbs is not None:
@@ -395,7 +402,7 @@ def _rayify_task(
 
 
 @ray.remote
-def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args):
+def dask_task_wrapper(task, repack, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
@@ -423,6 +430,7 @@ def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args)
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
 
+    deps = repack(args)[0]
     result = task(deps)
 
     if ray_posttask_cbs is not None:
