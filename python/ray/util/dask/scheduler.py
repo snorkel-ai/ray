@@ -61,16 +61,12 @@ def enable_dask_on_ray(
         The Dask config object, which can be used as a context manager to limit
         the scope of the Dask-on-Ray scheduler to the corresponding context.
     """
-    if use_shuffle_optimization:
-        from ray.util.dask.optimizations import dataframe_optimize
-    else:
-        dataframe_optimize = None
     # Manually set the global Dask scheduler config.
     # We also force the task-based shuffle to be used since the disk-based
     # shuffle doesn't work for a multi-node Ray cluster that doesn't share
     # the filesystem.
     return dask.config.set(
-        scheduler=ray_dask_get, shuffle=shuffle, dataframe_optimize=dataframe_optimize
+        scheduler=ray_dask_get, shuffle=shuffle
     )
 
 
@@ -78,7 +74,7 @@ def disable_dask_on_ray():
     """
     Unsets the scheduler, shuffle method, and DataFrame optimizer.
     """
-    return dask.config.set(scheduler=None, shuffle=None, dataframe_optimize=None)
+    return dask.config.set(scheduler=None, shuffle=None)
 
 
 def ray_dask_get(dsk, keys, **kwargs):
@@ -147,10 +143,7 @@ def ray_dask_get(dsk, keys, **kwargs):
     if "resources" in kwargs:
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
     ray_remote_args = kwargs.pop("ray_remote_args", {})
-    try:
-        annotations = dask.config.get("annotations")
-    except KeyError:
-        annotations = {}
+    annotations = dask.get_annotations()
     if "resources" in annotations:
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
 
@@ -377,15 +370,22 @@ def _rayify_task(
         else:
             raise ValueError("Invalid task type: %s" % type(task))
 
+        # If the function's arguments contain nested object references, we must
+        # unpack said object references into a flat set of arguments so that
+        # Ray properly tracks the object dependencies between Ray tasks.
+        arg_object_refs, repack = unpack_object_refs(deps)
+
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
             **ray_remote_args,
         ).remote(
             task,
+            repack,
             key,
             deps,
             ray_pretask_cbs,
             ray_posttask_cbs,
+            *arg_object_refs,
         )
 
         if ray_postsubmit_cbs is not None:
@@ -402,7 +402,7 @@ def _rayify_task(
 
 
 @ray.remote
-def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args):
+def dask_task_wrapper(task, repack, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
     repackage the given flat `args` into its original data structures using
@@ -430,6 +430,7 @@ def dask_task_wrapper(task, key, deps, ray_pretask_cbs, ray_posttask_cbs, *args)
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
 
+    deps = repack(args)[0]
     result = task(deps)
 
     if ray_posttask_cbs is not None:
