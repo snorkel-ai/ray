@@ -5,11 +5,6 @@ import dask.dataframe as dd
 import numpy as np
 import pandas as pd
 
-import dask
-from dask.base import dont_optimize
-#from ray.util.dask.scheduler import optimize as my_optimize_function
-#dask.config.set({"array_optimize": my_optimize_function})
-#dask.config.set({"array_optimize": dont_optimize})
 # Start Ray.
 # Tip: If connecting to an existing cluster, use ray.init(address="auto").
 ray.init(runtime_env={
@@ -19,10 +14,6 @@ ray.init(runtime_env={
 d_arr = da.from_array(np.random.randint(0, 1000, size=(1024, 1024)))
 d_arr2 = da.from_array(np.random.randint(0, 1000, size=(1024, 1024)))
 
-#
-#print("2*d_arr:", (2 * d_arr).compute(scheduler=ray_dask_get))
-
-# The Dask scheduler submits the underlying task graph to Ray.
 res = d_arr.compute(scheduler=ray_dask_get)
 print("array: ", res)
 res = d_arr2.compute(scheduler=ray_dask_get)
@@ -30,7 +21,7 @@ print("array2: ", res)
 res = (d_arr + d_arr2).compute(scheduler=ray_dask_get)
 print("array + array2: ", res)
 res = d_arr.mean().compute(scheduler=ray_dask_get)
-print("mean: ", res)
+print("mean of array: ", res)
 
 npartitions = 2
 df = dd.from_pandas(
@@ -49,9 +40,10 @@ df2 = dd.from_pandas(
 # optimization to work.
 a = df.set_index(["age"], shuffle="tasks", max_branch=npartitions)
 b = df2.set_index(["age"], shuffle="tasks", max_branch=npartitions)
+
 #a.visualize(filename="a.png", optimize_graph=False)
 #(dd.concat([a, b])).visualize(filename="a_plus_b.png", optimize_graph=False)
-print("a: ", a.compute())
-print("a + b: ", dd.concat([a, b]).compute())
+print("ddf a: ", a.compute())
+print("ddf a + ddf b: ", dd.concat([a, b]).compute())
 
 ray.shutdown()
