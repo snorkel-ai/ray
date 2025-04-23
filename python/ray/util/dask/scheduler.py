@@ -61,16 +61,12 @@ def enable_dask_on_ray(
         The Dask config object, which can be used as a context manager to limit
         the scope of the Dask-on-Ray scheduler to the corresponding context.
     """
-    if use_shuffle_optimization:
-        from ray.util.dask.optimizations import dataframe_optimize
-    else:
-        dataframe_optimize = None
     # Manually set the global Dask scheduler config.
     # We also force the task-based shuffle to be used since the disk-based
     # shuffle doesn't work for a multi-node Ray cluster that doesn't share
     # the filesystem.
     return dask.config.set(
-        scheduler=ray_dask_get, shuffle=shuffle, dataframe_optimize=dataframe_optimize
+        scheduler=ray_dask_get, shuffle=shuffle
     )
 
 
@@ -78,7 +74,7 @@ def disable_dask_on_ray():
     """
     Unsets the scheduler, shuffle method, and DataFrame optimizer.
     """
-    return dask.config.set(scheduler=None, shuffle=None, dataframe_optimize=None)
+    return dask.config.set(scheduler=None, shuffle=None)
 
 
 def ray_dask_get(dsk, keys, **kwargs):
