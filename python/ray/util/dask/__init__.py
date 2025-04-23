@@ -11,6 +11,7 @@ from .callbacks import (
     unpack_ray_callbacks,
     ProgressBarCallback,
 )
+from .optimizations import dataframe_optimize
 
 dask_persist = dask.persist
 
@@ -57,5 +58,6 @@ __all__ = [
     "local_ray_callbacks",
     "unpack_ray_callbacks",
     # Optimizations
+    "dataframe_optimize",
     "ProgressBarCallback",
 ]
