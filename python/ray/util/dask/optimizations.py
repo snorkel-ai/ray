@@ -3,9 +3,9 @@ import warnings
 
 import dask
 from dask import core
-from dask._task_spec import identity
 from dask.core import istask
 from dask.dataframe.core import _concat
+from dask.dataframe.optimize import optimize
 from dask.dataframe.shuffle import shuffle_group
 from dask.highlevelgraph import HighLevelGraph
 
@@ -18,12 +18,6 @@ except ImportError:
     SimpleShuffleLayer = None
 
 if SimpleShuffleLayer is not None:
-
-    try:
-        from dask.dataframe.optimize import optimize
-    except ImportError:
-        # optimize doesn't exist in this version of Dask.
-        optimize = identity
 
     class MultipleReturnSimpleShuffleLayer(SimpleShuffleLayer):
         @classmethod
