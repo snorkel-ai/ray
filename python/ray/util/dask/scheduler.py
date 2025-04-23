@@ -378,7 +378,7 @@ def _rayify_task(
         # unpack said object references into a flat set of arguments so that
         # Ray properly tracks the object dependencies between Ray tasks.
         arg_object_refs, repack = unpack_object_refs(deps)
-
+        # Submit the task using a wrapper function.
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
             **ray_remote_args,
