@@ -143,10 +143,7 @@ def ray_dask_get(dsk, keys, **kwargs):
     if "resources" in kwargs:
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
     ray_remote_args = kwargs.pop("ray_remote_args", {})
-    try:
-        annotations = dask.config.get("annotations")
-    except KeyError:
-        annotations = {}
+    annotations = dask.get_annotations()
     if "resources" in annotations:
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
 
