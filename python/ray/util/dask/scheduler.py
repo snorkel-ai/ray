@@ -370,7 +370,7 @@ def _rayify_task(
                 # for 2024.12.1+
                 return deps[target]
         elif isinstance(task, Task):
-            pass
+            func = task.func
         else:
             raise ValueError("Invalid task type: %s" % type(task))
 
@@ -381,6 +381,9 @@ def _rayify_task(
         # Submit the task using a wrapper function.
         object_refs = dask_task_wrapper.options(
             name=f"dask:{key!s}",
+            num_returns=(
+                1 if not isinstance(func, MultipleReturnFunc) else func.num_returns
+            ),
             **ray_remote_args,
         ).remote(
             task,

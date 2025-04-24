@@ -23,6 +23,8 @@ print("array + array2: ", res)
 res = d_arr.mean().compute(scheduler=ray_dask_get)
 print("mean of array: ", res)
 
+enable_dask_on_ray()
+
 npartitions = 2
 df = dd.from_pandas(
     pd.DataFrame(np.random.randint(0, 100, size=(1024, 2)), columns=["age", "grade"]),
@@ -45,5 +47,7 @@ b = df2.set_index(["age"], shuffle="tasks", max_branch=npartitions)
 #(dd.concat([a, b])).visualize(filename="a_plus_b.png", optimize_graph=False)
 print("ddf a: ", a.compute())
 print("ddf a + ddf b: ", dd.concat([a, b]).compute())
+
+disable_dask_on_ray()
 
 ray.shutdown()
