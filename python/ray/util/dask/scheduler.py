@@ -408,22 +408,20 @@ def _rayify_task(
 
 
 @ray.remote
-def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *args):
+def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg_object_refs):
     """
     A Ray remote function acting as a Dask task wrapper. This function will
-    repackage the given flat `args` into its original data structures using
-    `repack`, execute any Dask subtasks within the repackaged arguments
-    (inlined by Dask's optimization pass), and then pass the concrete task
-    arguments to the provide Dask task function, `func`.
+    repackage the given `arg_object_refs` into its original `deps` using
+    `repack`, and then pass it to the provided Dask Task object , `task`.
 
     Args:
-        func: The Dask task function to execute.
+        task: The Dask Task class object to execute.
         repack: A function that repackages the provided args into
             the original (possibly nested) Python objects.
         key: The Dask key for this task.
         ray_pretask_cbs: Pre-task execution callbacks.
         ray_posttask_cbs: Post-task execution callback.
-        *args (ObjectRef): Ray object references representing the Dask task's
+        *arg_object_refs (ObjectRef): Ray object references representing the Dask task's
             arguments.
 
     Returns:
@@ -433,10 +431,9 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
     """
     if ray_pretask_cbs is not None:
         pre_states = [
-            cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
+            cb(key, arg_object_refs) if cb is not None else None for cb in ray_pretask_cbs
         ]
-
-    repacked_deps, = repack(args)
+    repacked_deps, = repack(arg_object_refs)
     result = task(repacked_deps)
 
     if ray_posttask_cbs is not None:
