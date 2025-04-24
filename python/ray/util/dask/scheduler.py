@@ -436,7 +436,7 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
             cb(key, args) if cb is not None else None for cb in ray_pretask_cbs
         ]
 
-    repacked_deps = repack(args)[0]
+    repacked_deps, = repack(args)
     result = task(repacked_deps)
 
     if ray_posttask_cbs is not None:
