@@ -421,8 +421,8 @@ def dask_task_wrapper(task, repack, key, ray_pretask_cbs, ray_posttask_cbs, *arg
         key: The Dask key for this task.
         ray_pretask_cbs: Pre-task execution callbacks.
         ray_posttask_cbs: Post-task execution callback.
-        *arg_object_refs (ObjectRef): Ray object references representing the Dask task's
-            arguments.
+        *arg_object_refs (ObjectRef): Ray object references representing the dependencies'
+            results.
 
     Returns:
         The output of the Dask task. In the context of Ray, a
