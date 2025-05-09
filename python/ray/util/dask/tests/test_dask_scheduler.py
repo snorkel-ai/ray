@@ -149,10 +149,10 @@ def test_sort_with_progress_bar(ray_start_1_cpu):
     sorted_without_pb = None
     with ProgressBarCallback():
         sorted_with_pb = df.set_index(
-            ["age"], shuffle="tasks", max_branch=npartitions
+            ["age"], shuffle_method="tasks", max_branch=npartitions
         ).compute(scheduler=ray_dask_get, _ray_enable_progress_bar=True)
     sorted_without_pb = df.set_index(
-        ["age"], shuffle="tasks", max_branch=npartitions
+        ["age"], shuffle_method="tasks", max_branch=npartitions
     ).compute(scheduler=ray_dask_get)
     assert sorted_with_pb.equals(sorted_without_pb)
 
