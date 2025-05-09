@@ -5,6 +5,7 @@ import dask
 from dask import core
 from dask.core import istask
 from dask.dataframe.core import _concat
+from dask.dataframe.optimize import optimize
 from dask.dataframe.shuffle import shuffle_group
 from dask.highlevelgraph import HighLevelGraph
 
@@ -15,12 +16,6 @@ try:
 except ImportError:
     # SimpleShuffleLayer doesn't exist in this version of Dask.
     SimpleShuffleLayer = None
-
-# try:
-#     from dask.dataframe.optimize import optimize
-# except ImportError:
-#     # optimize doesn't exist in this version of Dask.
-#     optimize = None
 
 if SimpleShuffleLayer is not None:
 
@@ -135,7 +130,7 @@ if SimpleShuffleLayer is not None:
             dsk = HighLevelGraph.from_collections(id(dsk), dsk, dependencies=())
 
         dsk = rewrite_simple_shuffle_layer(dsk, keys=keys)
-        return dsk
+        return optimize(dsk, keys, **kwargs)
 
 else:
 
@@ -146,7 +141,7 @@ else:
             f"{dask.__version__}, please upgrade Dask."
             "Falling back to default dataframe optimizer."
         )
-        return dsk
+        return optimize(dsk, keys, **kwargs)
 
 
 # Stale approaches below.
