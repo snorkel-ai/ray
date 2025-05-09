@@ -2,6 +2,7 @@ import atexit
 import threading
 from collections import defaultdict
 from collections import OrderedDict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from multiprocessing.pool import ThreadPool
 from typing import Optional
@@ -151,6 +152,12 @@ def ray_dask_get(dsk, keys, **kwargs):
     if "resources" in annotations:
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
 
+    # Take out the dask graph if it is an Expr for dask>=2025.4.0.
+    if not isinstance(dsk, Mapping):
+        dsk = dsk.__dask_graph__()
+    # Make sure the graph is in the new format
+    dsk = convert_legacy_graph(dsk)
+
     scoped_ray_remote_args = _build_key_scoped_ray_remote_args(
         dsk, annotations, ray_remote_args
     )
@@ -165,8 +172,7 @@ def ray_dask_get(dsk, keys, **kwargs):
             ray_postsubmit_all_cbs,
             ray_finish_cbs,
         ) = unpack_ray_callbacks(ray_callbacks)
-        # Make sure the graph is in the new format
-        dsk = convert_legacy_graph(dsk)
+
         # NOTE: We hijack Dask's `get_async` function, injecting a different
         # task executor.
         object_refs = get_async(
