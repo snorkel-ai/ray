@@ -5,74 +5,94 @@ import dask
 from dask import core
 from dask.core import istask
 from dask.dataframe.core import _concat
+from dask.dataframe.shuffle import shuffle_group
 from dask.highlevelgraph import HighLevelGraph
 
 from .scheduler import MultipleReturnFunc, multiple_return_get
 
 try:
-    from dask.dataframe.dask_expr._shuffle import SimpleShuffle
+    from dask.dataframe.shuffle import SimpleShuffleLayer
 except ImportError:
-    SimpleShuffle = None
+    # SimpleShuffleLayer doesn't exist in this version of Dask.
+    SimpleShuffleLayer = None
 
-if SimpleShuffle is not None:
+# try:
+#     from dask.dataframe.optimize import optimize
+# except ImportError:
+#     # optimize doesn't exist in this version of Dask.
+#     optimize = None
 
-    class MultipleReturnSimpleShuffle(SimpleShuffle):
-        def __str__(self):
-            return (
-                f"MultipleReturnSimpleShuffle<name='{self._name[-7:]}', "
-                f"npartitions={self.npartitions_out}>"
+if SimpleShuffleLayer is not None:
+
+    class MultipleReturnSimpleShuffleLayer(SimpleShuffleLayer):
+        @classmethod
+        def clone(cls, layer: SimpleShuffleLayer):
+            # TODO(Clark): Probably don't need this since SimpleShuffleLayer
+            # implements __copy__() and the shallow clone should be enough?
+            return cls(
+                name=layer.name,
+                column=layer.column,
+                npartitions=layer.npartitions,
+                npartitions_input=layer.npartitions_input,
+                ignore_index=layer.ignore_index,
+                name_input=layer.name_input,
+                meta_input=layer.meta_input,
+                parts_out=layer.parts_out,
+                annotations=layer.annotations,
             )
 
-        # def __reduce__(self):
-        #     attrs = [
-        #         "name",
-        #         "column",
-        #         "npartitions",
-        #         "npartitions_input",
-        #         "ignore_index",
-        #         "name_input",
-        #         "meta_input",
-        #         "parts_out",
-        #         "annotations",
-        #     ]
-        #     return (
-        #         MultipleReturnSimpleShuffleLayer,
-        #         tuple(getattr(self, attr) for attr in attrs),
-        #     )
+        def __repr__(self):
+            return (
+                f"MultipleReturnSimpleShuffleLayer<name='{self.name}', "
+                f"npartitions={self.npartitions}>"
+            )
 
-        # def _cull(self, parts_out):
-        #     return MultipleReturnSimpleShuffleLayer(
-        #         self.name,
-        #         self.column,
-        #         self.npartitions,
-        #         self.npartitions_input,
-        #         self.ignore_index,
-        #         self.name_input,
-        #         self.meta_input,
-        #         parts_out=parts_out,
-        #     )
+        def __reduce__(self):
+            attrs = [
+                "name",
+                "column",
+                "npartitions",
+                "npartitions_input",
+                "ignore_index",
+                "name_input",
+                "meta_input",
+                "parts_out",
+                "annotations",
+            ]
+            return (
+                MultipleReturnSimpleShuffleLayer,
+                tuple(getattr(self, attr) for attr in attrs),
+            )
 
-        def _layer(self):
+        def _cull(self, parts_out):
+            return MultipleReturnSimpleShuffleLayer(
+                self.name,
+                self.column,
+                self.npartitions,
+                self.npartitions_input,
+                self.ignore_index,
+                self.name_input,
+                self.meta_input,
+                parts_out=parts_out,
+            )
+
+        def _construct_graph(self):
             """Construct graph for a simple shuffle operation."""
-            shuffle_group_name = "group-" + self._name
-            split_name = "split-" + self._name
-            npartitions = self.npartitions_out
+
+            shuffle_group_name = "group-" + self.name
+            shuffle_split_name = "split-" + self.name
 
             dsk = {}
-            n_parts_out = len(self._partitions)
-            _filter = self._partitions if self._filtered else None
-            for global_part, part_out in enumerate(self._partitions):
+            n_parts_out = len(self.parts_out)
+            for part_out in self.parts_out:
+                # TODO(Clark): Find better pattern than in-scheduler concat.
                 _concat_list = [
-                    (split_name, part_out, part_in)
-                    for part_in in range(self.frame.npartitions)
+                    (shuffle_split_name, part_out, part_in)
+                    for part_in in range(self.npartitions_input)
                 ]
-                dsk[(self._name, global_part)] = (
-                    _concat,
-                    _concat_list,
-                    self.ignore_index,
-                )
+                dsk[(self.name, part_out)] = (_concat, _concat_list, self.ignore_index)
                 for _, _part_out, _part_in in _concat_list:
-                    dsk[(split_name, _part_out, _part_in)] = (
+                    dsk[(shuffle_split_name, _part_out, _part_in)] = (
                         multiple_return_get,
                         (shuffle_group_name, _part_in),
                         _part_out,
@@ -80,17 +100,16 @@ if SimpleShuffle is not None:
                     if (shuffle_group_name, _part_in) not in dsk:
                         dsk[(shuffle_group_name, _part_in)] = (
                             MultipleReturnFunc(
-                                self._shuffle_group,
+                                shuffle_group,
                                 n_parts_out,
                             ),
-                            (self.frame._name, _part_in),
-                            _filter,
-                            self.partitioning_index,
+                            (self.name_input, _part_in),
+                            self.column,
                             0,
-                            npartitions,
-                            npartitions,
+                            self.npartitions,
+                            self.npartitions,
                             self.ignore_index,
-                            npartitions,
+                            self.npartitions,
                         )
 
             return dsk
