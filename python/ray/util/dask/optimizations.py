@@ -5,16 +5,17 @@ import dask
 from dask import core
 from dask.core import istask
 from dask.dataframe.core import _concat
-from dask.dataframe.optimize import optimize
-from dask.dataframe.shuffle import shuffle_group
 from dask.highlevelgraph import HighLevelGraph
 
 from .scheduler import MultipleReturnFunc, multiple_return_get
 
 try:
     from dask.dataframe.shuffle import SimpleShuffleLayer
+    from dask.dataframe.optimize import optimize
+    from dask.dataframe.shuffle import shuffle_group
 except ImportError:
     # SimpleShuffleLayer doesn't exist in this version of Dask.
+    # This is the case for dask<2020.12.0,>=2025.1.0.
     SimpleShuffleLayer = None
 
 if SimpleShuffleLayer is not None:
@@ -135,33 +136,20 @@ if SimpleShuffleLayer is not None:
 else:
 
     def dataframe_optimize(dsk, keys, **kwargs):
-        warnings.warn(
-            "Custom dataframe shuffle optimization only works on "
-            "dask>=2020.12.0, you are on version "
-            f"{dask.__version__}, please upgrade Dask."
-            "Falling back to default dataframe optimizer."
-        )
-        return optimize(dsk, keys, **kwargs)
-
-
-# Stale approaches below.
-
-
-def fuse_splits_into_multiple_return(dsk, keys):
-    if not isinstance(dsk, HighLevelGraph):
-        dsk = HighLevelGraph.from_collections(id(dsk), dsk, dependencies=())
-    else:
-        dsk = dsk.copy()
-    dependencies = dsk.dependencies.copy()
-    for k, v in dsk.items():
-        if istask(v) and v[0] == shuffle_group:
-            task_deps = dependencies[k]
-            # Only rewrite shuffle group split if all downstream dependencies
-            # are splits.
-            if all(
-                istask(dsk[dep]) and dsk[dep][0] == operator.getitem
-                for dep in task_deps
-            ):
-                for dep in task_deps:
-                    # Rewrite split
-                    pass
+        try:
+            from dask.dataframe.optimize import optimize
+            warnings.warn(
+                "Custom dataframe shuffle optimization only works on "
+                "dask>=2020.12.0,<2025.1.0, you are on version "
+                f"{dask.__version__}."
+                "Falling back to the default (legacy) dataframe optimizer."
+            )
+            return optimize(dsk, keys, **kwargs)
+        except ImportError:
+            warnings.warn(
+                "Custom dataframe shuffle optimization only works on "
+                "dask>=2020.12.0,<2025.1.0, you are on version "
+                f"{dask.__version__}."
+                "Doing no additional optimization aside from the default one."
+            )
+            return None
