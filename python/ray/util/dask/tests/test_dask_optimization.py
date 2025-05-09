@@ -10,6 +10,12 @@ from packaging.version import Version
 
 from ray.tests.conftest import *  # noqa
 from ray.util.dask import dataframe_optimize
+if Version(dask.__version__) < Version("2025.1"):
+    from dask.dataframe.shuffle import SimpleShuffleLayer
+    from ray.util.dask.optimizations import (
+        rewrite_simple_shuffle_layer,
+        MultipleReturnSimpleShuffleLayer,
+    )
 
 pytestmark = pytest.mark.skipif(
     sys.version_info >= (3, 12), reason="Skip dask tests for Python version 3.12+"
@@ -20,12 +26,6 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_rewrite_simple_shuffle_layer(ray_start_regular_shared):
-    from dask.dataframe.shuffle import SimpleShuffleLayer
-    from ray.util.dask.optimizations import (
-        rewrite_simple_shuffle_layer,
-        MultipleReturnSimpleShuffleLayer,
-    )
-
     npartitions = 10
     df = dd.from_pandas(
         pd.DataFrame(
