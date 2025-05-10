@@ -15,7 +15,7 @@ try:
     from dask.dataframe.shuffle import shuffle_group
 except ImportError:
     # SimpleShuffleLayer doesn't exist in this version of Dask.
-    # This is the case for dask<2020.12.0,>=2025.1.0.
+    # This is the case for dask>=2025.1.0.
     SimpleShuffleLayer = None
 
 if SimpleShuffleLayer is not None:
@@ -136,20 +136,10 @@ if SimpleShuffleLayer is not None:
 else:
 
     def dataframe_optimize(dsk, keys, **kwargs):
-        try:
-            from dask.dataframe.optimize import optimize
-            warnings.warn(
-                "Custom dataframe shuffle optimization only works on "
-                "dask>=2020.12.0,<2025.1.0, you are on version "
-                f"{dask.__version__}."
-                "Falling back to the default (legacy) dataframe optimizer."
-            )
-            return optimize(dsk, keys, **kwargs)
-        except ImportError:
-            warnings.warn(
-                "Custom dataframe shuffle optimization only works on "
-                "dask>=2020.12.0,<2025.1.0, you are on version "
-                f"{dask.__version__}."
-                "Doing no additional optimization aside from the default one."
-            )
-            return None
+        warnings.warn(
+            "Custom dataframe shuffle optimization only works on "
+            "dask>=2024.11.0,<2025.1.0, you are on version "
+            f"{dask.__version__}."
+            "Doing no additional optimization aside from the default one."
+        )
+        return None
