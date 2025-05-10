@@ -125,7 +125,7 @@ def test_ray_dask_resources(ray_start_cluster, ray_enable_dask_on_ray):
         result = c().compute(resources={"pin": 0.01})
 
     def get_node_id(row):
-        return pd.Series(ray._private.worker.global_worker.node.unique_id, name="id")
+        return pd.Series(ray._private.worker.global_worker.node.unique_id)
 
     # # Test annotations on collection.
     # This doesn't work with dask_expr (dask/dask#10937).
