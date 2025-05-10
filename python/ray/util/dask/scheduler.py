@@ -12,6 +12,7 @@ import ray
 import dask
 from dask.core import istask, ishashable
 from dask._task_spec import Task, Alias, TaskRef, convert_legacy_graph
+from dask._expr import _HLGExprSequence, _ExprSequence
 from dask.system import CPU_COUNT
 from dask.threaded import pack_exception, _thread_get_id
 
@@ -153,7 +154,9 @@ def ray_dask_get(dsk, keys, **kwargs):
         raise ValueError(TOP_LEVEL_RESOURCES_ERR_MSG)
 
     # Take out the dask graph if it is an Expr for dask>=2025.4.0.
-    if not isinstance(dsk, Mapping):
+    if isinstance(dsk, _HLGExprSequence):
+        dsk = dsk._optimized_dsk
+    elif isinstance(dsk, _ExprSequence):
         dsk = dsk.__dask_graph__()
 
     scoped_ray_remote_args = _build_key_scoped_ray_remote_args(
