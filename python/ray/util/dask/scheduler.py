@@ -155,9 +155,9 @@ def ray_dask_get(dsk, keys, **kwargs):
 
     # Take out the dask graph if it is an Expr for dask>=2025.4.0.
     if isinstance(dsk, Expr):
-        if isinstance(dsk, _HLGExprSequence):
+        if hasattr(dsk, "_optimized_dsk"):
             dsk = dsk._optimized_dsk
-        elif isinstance(dsk, _ExprSequence):
+        else:
             dsk = dsk.__dask_graph__()
     scoped_ray_remote_args = _build_key_scoped_ray_remote_args(
         dsk, annotations, ray_remote_args
