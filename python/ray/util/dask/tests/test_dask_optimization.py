@@ -10,7 +10,13 @@ from packaging.version import Version
 
 from ray.tests.conftest import *  # noqa
 from ray.util.dask import dataframe_optimize
-if Version(dask.__version__) < Version("2025.1"):
+try:
+    import dask_expr
+    DASK_EXPR_INSTALLED = True
+except ImportError:
+    pass
+
+if Version(dask.__version__) < Version("2025.1") and not DASK_EXPR_INSTALLED:
     from dask.dataframe.shuffle import SimpleShuffleLayer
     from ray.util.dask.optimizations import (
         rewrite_simple_shuffle_layer,
@@ -21,7 +27,7 @@ pytestmark = pytest.mark.skipif(
     sys.version_info >= (3, 12), reason="Skip dask tests for Python version 3.12+"
 )
 pytestmark = pytest.mark.skipif(
-    Version(dask.__version__) >= Version("2025.1"), reason="Skip dask tests for Dask 2025.1+"
+    Version(dask.__version__) >= Version("2025.1") or DASK_EXPR_INSTALLED, reason="Skip dask tests for Dask 2025.1+"
 )
 
 

@@ -17,6 +17,12 @@ except ImportError:
     # SimpleShuffleLayer doesn't exist in this version of Dask.
     # This is the case for dask>=2025.1.0.
     SimpleShuffleLayer = None
+try:
+    import dask_expr
+    SimpleShuffleLayer = None
+except ImportError:
+    pass
+
 
 if SimpleShuffleLayer is not None:
 
